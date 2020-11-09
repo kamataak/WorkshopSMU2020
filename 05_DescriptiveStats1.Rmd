@@ -1,0 +1,140 @@
+---
+title: "5. Descriptive Statistics"
+author: "Akihito Kamata"
+date: "September 22, 2020"
+output: html_notebook
+---
+
+## Load Required Packages
+```{r message=F}
+library(tidyverse)
+library(sjlabelled)
+library(sjmisc)
+library(psych)
+```
+
+## Read a Data file
+Read `easyCBM.sav` file.  
+As we have seen before, this data file contains 15 variables for randomly selected 250 students, longitudinal easyCBM test scores and demographic variables.
+
+`ID`: Deidentified ID.  
+`ORF1`: Oral reading fluency score in Fall.  
+`ORF2`: Oral reading fluency score in Winter.  
+`ORF3`: Oral reading fluency score in Spring.  
+`MCC1`: Reading comprehension score in Fall.  
+`MCC2`: Reading comprehension score in Winter.  
+`MCC3`: Reading comprehension score in Spring.  
+`VOC1`: Vocabulary score in Fall.  
+`VOC3`: Vocabulary score in Spring.  
+`Test_A`: Statewide test score.  
+`Ethnic`: Ethnicity (1=Amer Ind/Alsk Nat, 2=Asian/Pac Isl, 3=Black, 4=Hispanic, 5=White, 6=Multi-Ethnic, 7=Decline).  
+`EconDs`: Economically Disadvantaged (0=No, 1=Yes).  
+`SpEd`: Special Education (0=No, 1=Yes).  
+`Gender`: Gender (0=Males, 1=Females).  
+`Prof`: Reading proficiency status (0=Not Meet, 1=Meets/Exceeds).  
+
+```{r}
+easyCBM10 <- read_spss("easyCBM.sav")
+```
+
+## Descriptive Statistics
+There are MANY different ways to generate descriptive statistics. For this class, I recommend you get used to three different ways.
+
+### (1) descr() function in the `sjmisc` package
+This is my favorite at this point. It allows us to customize output very well. Also, the output is very easy to extract for some other purposes.  
+
+Default specification, which shows all available statistics.
+```{r}
+easyCBM10 %>% 
+  select(MCC1, MCC2, MCC3) %>% 
+  descr()
+```
+Specify a short version of the output, which shows a minimal set of statistics.
+```{r}
+easyCBM10 %>% 
+  select(MCC1, MCC2, MCC3) %>% 
+  descr(show = "short")
+```
+We can specify a custom set of statistics.
+```{r}
+easyCBM10 %>% 
+  select(MCC1, MCC2, MCC3) %>% 
+  descr(show = c("label", "n", "mean", "sd", "skew"))
+```
+Customize the output format.
+```{r}
+easyCBM10 %>% 
+  select(MCC1) %>% 
+  descr(show = c("label", "n", "mean", "sd", "skew"),
+        out = "viewer")
+```
+
+### (2) describe() function in the `psych` package
+This used to be my favorite. It has two potential advantage. 1) It computes kurtosis, which `descr()` function does not, and 2) By default, it produces an interactive table for R Notebook file, both for Rmd and HTML file. However, it does not come with flexibility of what `descr()` can do.  
+
+Default specification, which shows all available statistics.  
+```{r}
+easyCBM10 %>% 
+  select(MCC1, MCC2, MCC3) %>% 
+  describe()
+```
+Shorter version of output.
+```{r}
+easyCBM10 %>% 
+  select(MCC1, MCC2, MCC3) %>% 
+  describe(fast = T)
+```
+
+### (3) `summary()` function as part of the base packages
+This is quite limited. However, it produces 1st and 3rd quartiles, which the other two do not produce.  
+
+```{r}
+easyCBM10 %>% 
+  select(MCC1, MCC2, MCC3) %>% 
+  summary()
+```
+
+## Grouped Statistics
+We can use `group_by()` function to generate grouped statistics.  
+
+Let's say we are interested in descriptive statistics of `MCC1`, `MCC2`, and `MCC3`, grouped by `SpEd` groups.  
+
+First, let's generate a frequency table for `SpEd`.  
+```{r}
+easyCBM10 %>% select(SpEd) %>% frq()
+```
+
+Grouped statistics now by using `group_by()` function.
+```{r}
+easyCBM10 %>% 
+  group_by(SpEd) %>% 
+  select(MCC1, MCC2, MCC3) %>% 
+  descr(show = c("label", "n", "mean", "sd"))
+```
+
+## Contingency Table
+If we describe grouped frequencies, we are dealing with what is called a "contingency table". Technically, when we describe the frequencies by crossing two or more categorical variables, the table we produce is called a contingency table.  
+
+For example, let's say we are interested in the frequencies of `Gender` grouped by `SpEd`. In other words, we will cross two categorical variables `SpEd` and `Gender`. As a result, we will obtain frequencies of the following four groups:  
+
+SpEd = No & Gender = Male
+SpEd = No & Gender = Female
+SpEd = Yes & Gender = Male
+SpEd = Yes & Gender = Female
+
+```{r}
+easyCBM10 %>% 
+  group_by(SpEd) %>% 
+  select(SpEd, Gender) %>% 
+  frq()
+```
+
+If we prefer a simpler table only with frequencies, we can use `flat_table()` function in the `sjmisc` package, instead of `frq()` function.
+
+```{r}
+easyCBM10 %>% 
+  group_by(SpEd) %>% 
+  select(SpEd, Gender) %>% 
+  flat_table()
+```
+

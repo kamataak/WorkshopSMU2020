@@ -1,0 +1,270 @@
+---
+title: "2. Data Transformations"
+author: "Akihito Kamata"
+date: "September 1, 2020"
+output: html_notebook
+---
+
+## Load Required Packages
+```{r}
+library(tidyverse)
+library(sjmisc)
+library(sjlabelled)
+```
+
+## Work with a CSV Data File
+A CSV data file is also called a "comma delimited format" file. CSV stands for "comma separated values". It is a text only file format, where values for different columns are separated by comma. It is a very convenient way to manage and store your data, because you can use Excel to manage a data file.  
+
+### Read a Data file
+Read `easyCBM.csv` file.  
+This data file contains 15 variables for randomly selected 250 students, longitudinal easyCBM test scores and demographic variables.
+
+`ID`: Deidentified ID.  
+`ORF1`: Oral reading fluency score in Fall.  
+`ORF2`: Oral reading fluency score in Winter.  
+`ORF3`: Oral reading fluency score in Spring.  
+`MCC1`: Reading comprehension score in Fall.  
+`MCC2`: Reading comprehension score in Winter.  
+`MCC3`: Reading comprehension score in Spring.  
+`VOC1`: Vocabulary score in Fall.  
+`VOC3`: Vocabulary score in Spring.  
+`Test_A`: Statewide test score.  
+`Ethnic`: Ethnicity (1=Amer Ind/Alsk Nat, 2=Asian/Pac Isl, 3=Black, 4=Hispanic, 5=White, 6=Multi-Ethnic, 7=Decline).  
+`EconDs`: Economically Disadvantaged (0=No, 1=Yes).  
+`SpEd`: Special Education (0=No, 1=Yes).  
+`Gender`: Gender (0=Males, 1=Females).  
+`Prof`: Reading proficienty status (0=Not Meet, 1=Meets/Exceeds).  
+```{r}
+easyCBM00 <- read.csv("easyCBM.csv")
+```
+
+### Recode
+There are MANY different ways to recode data on R. For now, we will use a combination of two functions; `mutate()` and `rec`.  
+
+The `mutate()` function is part of `tidyverse` package, which is used to create a new variable. The `mutate()` function can be used to overwrite an existing variable with something else, too.  
+
+The `rec()` function is part of the `sjmisc` package, which does the actual recoding part.  
+
+A simple recoding of numerical values to text values:
+```{r}
+easyCBM01 <- 
+  easyCBM00 %>% 
+  mutate(
+    SpEd1 = rec(SpEd, 
+                 rec = "0=No; 1=Yes; else=NA",
+                 as.num = F
+                    )
+    )
+```
+This recoded the original numerical values into text values. Also, it converted the variable into a "factor", which is an R way of saying "categorical variable", by `as.num = F`.  
+
+We can also retain the numerical values and give labels. In the following way.
+```{r}
+easyCBM01 <- 
+  easyCBM01 %>% 
+  mutate(
+    SpEd2 = rec(SpEd, 
+                 rec = "0=0 [No]; 1=1 [Yes]; else=NA",
+                 as.num = F
+                    )
+    )
+```
+
+Verify by running a frequency table.
+```{r}
+easyCBM01 %>% select(SpEd, SpEd1, SpEd2) %>% frq()
+```
+
+Another example to recode a range of values in a single category.
+```{r}
+easyCBM01 <- 
+  easyCBM01 %>% 
+  mutate(ORF1cat = rec(ORF1, 
+                       rec="min:115=1 [low]; 116:175=2 [med]; 176:max=3 [high]; else=NA", 
+                       as.num = F)
+         )
+```
+
+Verify with frequency table 
+```{r}
+easyCBM01 %>% select(ORF1cat) %>% frq()
+```
+
+### Reverse Code
+Sometimes, we may be interested in reverse coding numerical values. For example, for a Likert-type questionnaire item, if the statement is worded negatively, while other items in the questionnaire are worded positively, it makes sense to reverse code, such that; 1 -> 5, 2 -> 4, 3 -> 3, 4 -> 2, and 5 -> 1.  
+
+Here, we do not have a suitable variable in the data file for a realistic reverse coding. Therefore, I only demonstrate how we can use the `rec` function to reverse code some of available variables, which are not realistically meaningful.  
+
+```{r}
+easyCBM01 <- 
+  easyCBM01 %>% 
+  mutate(SpEdRev = rec(SpEd, rec="rev"),
+         EthnicRev = rec(Ethnic, rec="rev")
+         )
+```
+
+Verify with frequency tables for `SpEd` and `SpEdRev`.
+```{r}
+easyCBM01 %>% select(SpEd, SpEdRev) %>% frq()
+```
+Verify with frequency tables for `Ethnic` and `EthnicRev`.
+```{r}
+easyCBM01 %>% select(Ethnic, EthnicRev) %>% frq()
+```
+
+### Data Transformation
+Sometimes, we are interested in creating a new variable as a function of existing variables. For example, it is a very common practice to create a variable as composite scores of multiple items, such as total scores and average scores. 
+
+For example, create a new variable `FallTot` as the total score of `ORF1`, `MCC1`, and `VOC1`.
+```{r}
+easyCBM01 <- 
+  easyCBM01 %>% 
+  mutate(FallTot = ORF1 + MCC1 + VOC1)
+```
+
+Another example to create new variables `ORFavg` and `ORFavg2` as the average score of `ORF1`, `ORF2`, and `ORF3` in two different approaches.  
+
+`ORFavg` was computed by arithmetic computation of the mean. However, if there is a missing data in one or more of the three variables for an individual, this arithmetic computation will not produce an accurate average of the scores.  
+To overcome this limitation, `ORFavg2` is a more robust approach, because it will compute the average of whatever available data for each individual.  
+```{r}
+easyCBM01 <- 
+  easyCBM01 %>% 
+  mutate(ORFavg = (ORF1 + ORF2 + ORF3)/3,
+         ORFavg2 = select(., ORF1, ORF2, ORF3) %>% rowMeans(na.rm = T)
+  )
+```
+
+## Work with SPSS Data File
+Although R is becoming more and more popular, many people use SPSS for data management and analyses in our fields of study. As you work with your professors and colleagues, it is very likely you receive an SPSS data file to work on. Therefore, it is a good idea to learn how to read an SPSS data file into R.  
+
+On SPSS, it is very common to add variable labels and value labels as part of data file. Luckily, R is quite good reading in an SPSS data file, even when the data file is populated with labels. So, when we receive an SPSS data file from colleagues, we can still use R to do work equally (or more) efficient as SPSS. The `sjmisc` and `sjlabelled` packages are quite useful to handle SPSS data files with pre-loaded labels.  
+
+### Read SPSS Data File
+We will use `read_spss` function in the `sjlabelled` package. Actually, `read_spss` is part of the `tidyverse`, but `sjlabelled` package offers an enhanced version of this function, specifically focusing on data labels.  
+```{r}
+easyCBM10 <- read_spss("easyCBM.sav")
+```
+
+If we take a look at the data object in the viewer, we can see that the data comes with variable labels. 
+```{r}
+View(easyCBM10)
+```
+
+Also, we can see the **variable** labels by:
+```{r}
+easyCBM10 %>% get_label()
+```
+
+We can see the **value** labels by:
+```{r}
+easyCBM10 %>% get_labels()
+```
+A little complicated, but we can put the **value** labels and corresponding values into one table by:
+```{r}
+Map(rbind, get_values(easyCBM10), get_labels(easyCBM10))
+```
+### Remove/Change Labels
+In some cases, we may wish to remove or change labels. For example, labels will not carry over well when we create a new variable by an arithmetic operation.  
+
+Hypothetically, I will create 3 new variables to indicate whether the student has satisfactory reading comprehension scores (say, higher than 15) and give a values and labels (0=NotPass, 1=Pass).  
+
+```{r}
+easyCBM11 <- 
+  easyCBM10 %>% 
+  mutate(MCC1p = rec(MCC1, rec="min:15=0 [NotPass]; 16:max=1 [Pass]", as.num=T),
+         MCC2p = rec(MCC2, rec="min:15=0 [NotPass]; 16:max=1 [Pass]", as.num=T),
+         MCC3p = rec(MCC3, rec="min:15=0 [NotPass]; 16:max=1 [Pass]", as.num=T))
+```
+
+Verify with frequency tables:
+```{r}
+easyCBM11 %>% select(MCC1p, MCC2p, MCC3p) %>% frq()
+```
+
+Create another variable to indicate how many passes the student had over 3 testing occasions.  
+```{r}
+easyCBM11 <- 
+  easyCBM11 %>% 
+  mutate(MCCpass = MCC1p + MCC2p + MCC3p)
+```
+
+Run a frequency table.  
+```{r}
+easyCBM11 %>% select(MCCpass) %>% frq()
+```
+
+As you can see, the value labels are not appropriate. One strategy is to recode the variable to itself with the same values without value labels.  
+
+Also, the variable label is not appropriate. We can provide a meaningful variable label, all within the `rec()` function.  
+```{r}
+easyCBM11 <- 
+  easyCBM11 %>% 
+  mutate(MCCpass = rec(MCCpass, 
+                       rec="0=0; 1=1; 2=2; 3=3; else=NA", 
+                       as.num=T,
+                       var.label = "The number of passes: Reading comprehension")
+  )
+```
+
+Verify by the frequency table:
+```{r}
+easyCBM11 %>% select(MCCpass) %>% frq()
+```
+Looks good!  
+
+## Save the Data
+There are several ways to save the data.  
+Let's try to save `easyCBM11`, which contains variable and value labels.
+
+### As a CSV file
+```{r}
+easyCBM11 %>% write_csv("easyCBM_v2.csv")
+```
+
+Read in the file  
+```{r}
+easyCBM02 <- read_csv("easyCBM_v2.csv")
+```
+As you see, the variable and value labels were not retained.
+
+### As an Rdata file
+```{r}
+save(easyCBM11, file = "easyCBM_v2.Rdata")
+```
+
+Read the data by `load()` function.
+```{r}
+load("easyCBM_v2.Rdata")
+```
+
+
+```{r}
+easyCBM11 %>% select(MCC3) %>% frq()
+```
+
+Generate percentiles by `quantile()` function:
+```{r}
+easyCBM10$MCC3 %>% 
+  quantile(prob=0.30)
+```
+
+For all percentile rank values:
+```{r}
+easyCBM10$MCC3 %>% 
+  quantile(prob=seq(0.01, 0.99, by=0.01)) %>% 
+  enframe()
+```
+
+Clean up:
+```{r}
+easyCBM10$MCC3 %>% 
+  quantile(prob=seq(0.01, 0.99, by=0.01)) %>% 
+  enframe() %>% 
+  group_by(value) %>% slice(1)
+  
+```
+
+
+
+
+
