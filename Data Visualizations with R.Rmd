@@ -1,16 +1,17 @@
 ---
 title: "Data Visualizations with R"
 author: "Yusuf Kara"
-date: "November 17, 2020"
+date: "April 13, 2020"
 output: html_notebook
 ---
 
-In this session, we will learn basics of data visualization with R using the `ggplot2` package, which is part of the `tidyverse` ecosystem that you used last week. We will also take a look at the `esquisse` package for click-and-go creation of the `ggplot2` graphics. Lastly, we will briefly touch base on the interactive graphics with `plotly` package. 
+In this session, we will learn basics of data visualization with R using the `ggplot2` package, which is part of the `tidyverse` ecosystem that you used last week. We will also take a look at the `esquisse` package for click-and-go creation of the `ggplot2` graphics. Lastly, we will briefly touch base on the interactive graphics with `plotly` package.
 
 ## Introduction and Data Preparation
-R has built-in functions such as `plot()`, `barplot()`, `hist()`, etc. to visualize data. Nevertheless, creating visuals with base R functions is not as efficient as using `ggplot2` functions. `ggplot2` has a well established *grammar of graphics* and intuitive work flow with the `+` operator, just like the pipe (`%>%`) operator that you learned last week. 
 
-We will use one of the datasets that we used last week, `easyCBM`, which contains oral reading fluency (ORF) scores and some demographic variables of young readers. Let's first load the `tidyverse`, `sjmisc`, and `sjlabelled` packages and read the `easyCBM` SPSS data file. Please note that we will be using `sjmisc` and `sjlabelled` packages for exploring data.
+R has built-in functions such as `plot()`, `barplot()`, `hist()`, etc. to visualize data. Nevertheless, creating visuals with base R functions is not as efficient as using `ggplot2` functions. `ggplot2` has a well established *grammar of graphics* and intuitive work flow with the `+` operator, just like the pipe (`%>%`) operator that you learned last week.
+
+We will use one of the data sets that we used last week, `easyCBM`, which contains oral reading fluency (ORF) scores and some demographic variables of young readers. Let's first load the `tidyverse`, `sjmisc`, and `sjlabelled` packages and read the `easyCBM` SPSS data file. Please note that we will be using `sjmisc` and `sjlabelled` packages for exploring data.
 
 ```{r,message=F}
 library(tidyverse)
@@ -19,19 +20,21 @@ library(sjlabelled)
 easyCBM <- read_spss("easyCBM.sav")
 ```
 
-
-Okay! Let's take a quick look at the dataset and remember what information does it contain.
+Okay! Let's take a quick look at the data set and remember what information does it contain.
 
 ```{r}
 easyCBM %>% slice(1:5)
 ```
+
 What about the descriptive statistics for the continuous (e.g., ORF scores) variables?
+
 ```{r}
 easyCBM %>% 
   select(ORF1:Test_A) %>% 
   descr()
 ```
-And frequency tables for the ethnicity, gender, and proficiency as categorical variables (We will use those three for graphics). 
+
+And frequency tables for the ethnicity, gender, and proficiency as categorical variables (We will use those three for graphics).
 
 ```{r}
 easyCBM %>% 
@@ -39,7 +42,7 @@ easyCBM %>%
   frq()
 ```
 
-Now, we have refreshed our memory about the `easyCBM` data. I would like to recode the numerical values of the categorical variables back to nominal values with their labels (And trim the ethnicity variable). Also, I will  convert them to *factors*, which is the class of objects that have *levels*. Factor is a useful object type in R (an R way of saying "categorical variable", as Dr. Kamata stated last week) and is used in statistical analyses, as well as in graphics. Using the argument `as.num=F` within the `rec()` function will do this conversion automatically. 
+Now, we have refreshed our memory about the `easyCBM` data. I would like to recode the numerical values of the categorical variables back to nominal values with their labels (and trim the ethnicity variable). Also, I will convert them to *factors*, which is the class of objects that have *levels*. Factor is a useful object type in R (an R way of saying "categorical variable") and is used in statistical analyses, as well as in graphics. Using the argument `as.num=F` within the `rec()` function will do this conversion automatically.
 
 ```{r}
 easyCBM <- 
@@ -49,29 +52,38 @@ easyCBM <-
          Prof=rec(Prof, rec = "0=Fail; 1=Pass; else=NA", as.num = F))
 ```
 
-
 ## Logic Behind `ggplot2()`and Use of Aesthetics
-Let's get started with a basic bar graph that shows the frequency of gender. The main function to create graphics with `ggplot2` is `ggplot()`. Let's see what would happen if we apply this function to the `easyCBM` dataset.
 
+Let's get started with a basic bar graph that shows the frequency of gender. The main function to create graphics with `ggplot2` is `ggplot()`. Let's see what would happen if we apply this function to the `easyCBM` data set.
 
 ```{r}
 easyCBM %>% 
   ggplot()
 ```
 
-So, by applying the base `ggplot()` function, we obtained an empty graph (i.e., a coordinate system ) for the graphic. Please note that we haven't indicated anything about gender yet. The next step is to describe the *aesthetics* of the graph by using the `aes()` argument for *mapping*. In aesthetics, we define the axes, shapes, colors etc. As stated by Wickham & Grolemund (2017) mapping defines how variables are *mapped* to visual properties of the graph, in other words the *aesthetics*. Thus, in the code below, we tell `ggplot()` that the values of x-axis will be identified by the gender variable of the `easyCBM` data. Please note that I will not be using the `mapping=` argument in the following code chunks to make the codes look simpler.
+So, by applying the base `ggplot()` function, we obtained an empty graph (i.e., a coordinate system ) for the graphic. Please note that we haven't indicated anything about gender yet. The next step is to describe the *aesthetics* of the graph by using the `aes()` argument for *mapping*. In aesthetics, we define the axes, shapes, colors etc. As stated by Wickham & Grolemund (2017) mapping defines how variables are *mapped* to visual properties of the graph, in other words the *aesthetics*. Thus, in the code below, we tell `ggplot()` that the values of x-axis will be identified by gender variable of the `easyCBM` data. Please note that I will not be using the `mapping=` argument in the following code chunks to make the codes look simpler.
+
 ```{r}
 easyCBM %>% 
   ggplot(mapping=aes(x=Gender))
 ```
 
 Okay! Now, it is time to declare the type of the graph we want: A bar chart! In `ggplot2` language, after we create the coordinate system, we start adding *layers* to our graphs. Layers starts with the type of the graph (e.g., bar, histogram, line, etc.), which is referred to as *geometry*. We will use the `geom_bar()` function for the bar chart. Similarly, other type of chart geometries uses the `geom_` prefix such as `geom_histogram()` or `geom_line()`. Very intuitive, isn't it?
+
 ```{r}
 easyCBM %>% 
   ggplot(aes(x=Gender)) +
   geom_bar()
 ```
-Great! We now have a beautiful (kind of) bar chart. Now let's make it look better. We will improve the look of the graph by adding layers with the `+` operator. 
+
+We can check quickly what other types of geometries are available in `ggplot2` by using the handy `apropos()` function. Please note that some of the geom functions below are used to enhance the main graphic rather than as a standalone type of geometry. For example, `geom_hline()` is used to add a horizontal line to the main graphic.
+
+```{r}
+apropos("geom_")
+```
+
+Great! We now have a beautiful (kind of) bar chart. Now let's make it look better. We will improve the look of the graph by adding layers with the `+` operator.
+
 ```{r}
 easyCBM %>% 
   ggplot(aes(x=Gender)) +
@@ -79,7 +91,8 @@ easyCBM %>%
   ggtitle("Frequency of Gender") +
   labs(y="Frequency")
 ```
-Now, let's take look at the new code chunk below and I'll copy the previous code that we used for 1-1 comparison. It seems like both codes produced the exact same graph, however, they have some differences in terms of using the `aes()` argument. In the new code, `aes()` was used within the `geom_bar()` function. Although it didn't make a difference with this example, it has an important implication with more complex graphs such as lines and points combined with different `geom_` functions. We will see an example for that later but for now, I recommend adopting the new approach, where we map aesthetics of the graph within the `geom_` function.
+
+Now, let's take look at the new code chunk below and I'll copy the previous code that we used for 1-1 comparison. It seems like both codes produced the exact same graph, however, they have some differences in terms of using the `aes()` argument. In the new code, `aes()` was used within the `geom_bar()` function. Although it didn't make a difference with this example, it has an important implication with more complex graphs such as lines and points combined with different `geom_` functions. We will see an example for that later but for now, I recommend adopting the new approach, where we map aesthetics of the graph within relevant `geom_` function.
 
 ```{r}
 #New Code
@@ -97,20 +110,23 @@ easyCBM %>%
 #  labs(y="Frequency")
 ```
 
-Now, let's create a scatter plot to see the the relationship between the ORF scores in Fall (ORF1) and Winter (ORF2).Did you realize the new *aesthetics* that we defined? Since it is a scatter plot, we need to define the y-axis as well.  
+Now, let's create a scatter plot to see the the relationship between the ORF scores in Fall (ORF1) and Winter (ORF2).Did you realize the new *aesthetics* that we defined? Since it is a scatter plot, we need to define the y-axis as well. And of course, we used `geom_point()` for the scatter plot.
+
 ```{r}
 easyCBM %>%
   ggplot() +
   geom_point(aes(x=ORF1, y=ORF2))
 ```
 
-Now, say we want to change the color of the points to blue.
+Now, say we want to change the color of the points to blue. Let's try this.
+
 ```{r}
 easyCBM %>%
   ggplot() +
   geom_point(aes(x=ORF1, y=ORF2, color="blue"))
 ```
-Oops! It seems like R crashed or it became color blind. Nope. It was our fault. Remember, we learned that `aes()` maps the visual characteristics to our variables within the dataset. Here, however, we just wanted to change the color of *all points* to blue. Thus, we are not associating the color to any attribute of data variable. The solution is: anything that needs to be *general* to the plot should be indicated out of the `aes()` argument. Let's solve this problem!
+
+Oops! It seems like R crashed or it became color blind. Nope. It was our fault. Remember, we learned that `aes()` maps the visual characteristics to our variables within the data set. Here, however, we just wanted to change the color of *all points* to blue. Thus, we are not associating the color to any attribute of data variable. The solution is: anything that needs to be *general* to the plot should be indicated out of the `aes()` argument. Let's solve this problem!
 
 ```{r}
 easyCBM %>%
@@ -119,6 +135,7 @@ easyCBM %>%
 ```
 
 Now, assume that we intentionally want to associate the color with some data attributes. In other words, let's assume we want to display the relationship of the ORF1 and ORF2 scores in different colors for male and female students. I think you know the answer for how to do that!
+
 ```{r}
 easyCBM %>%
   ggplot() +
@@ -126,13 +143,14 @@ easyCBM %>%
 ```
 
 Did you realize that a legend was automatically created? What else can we *map* to gender besides color? Well, shape of the points, size, etc.
+
 ```{r, message=F}
 easyCBM %>%
 ggplot() +
   geom_point(aes(x=ORF1, y=ORF2, color=Gender, shape=Gender, size=Gender))
 ```
 
-Okay, a last step: how to assign a different set of colors? It seems like `ggplot2` selected its favorite colors. Let's use SMU's official colors in hexadecimal color codes. I will also show some extra layers for changing characteristics of the graph and adding a smoothed line.
+Okay, a last step: how to assign a different set of colors? It seems like `ggplot2` selected its favorite colors. Let's use SMU's official colors in hexadecimal color codes. I will also show some extra layers for changing characteristics of the graph and adding a smoothed line to imply the relationship between the two ORF scores.
 
 ```{r, message=F}
 easyCBM %>%
@@ -145,7 +163,7 @@ easyCBM %>%
   theme_bw()
 ```
 
-Now, it is time to remember the note on the use of `aes()` either within each `geom_` function or within the main `ggplot()` function. As you realize in the code above, we have some common arguments for the aesthetics of the `geom_point()` and `geom_smooth()`. We can use those *global* aesthetics within the `ggplot()` function. This helps us save some time by eliminating the repetition of those aesthetic per `geom_`. Let's see if this would work. 
+Now, it is time to remember the note on the use of `aes()` either within each `geom_` function or within the main `ggplot()` function. As you realize in the code above, we have some common arguments for the aesthetics of the `geom_point()` and `geom_smooth()`. We can use those *global* aesthetics within the `ggplot()` function. This helps us save some time by eliminating the repetition of those aesthetic per `geom_`. Let's see if this would work.
 
 ```{r, message=F}
 easyCBM %>%
@@ -159,7 +177,8 @@ easyCBM %>%
 ```
 
 ## Introducing Multi-panel Graphing
-Up to this point, we visualized our data in a single panel/window. In other words, we used different visual characteristics such as color to present the information for various groups. We might want to create separate panels for this aim. Now, let's create the previous scatter plot in two panels for males and females. We will use the `facet_wrap()` function to accomplish this. I'll remove the all added extra layers to the previous graph to highlight the use of new function and prevent the complex look of the code chunk. 
+
+Up to this point, we visualized our data in a single panel/window. In other words, we used different visual characteristics such as color to present the information for various groups. We might want to create separate panels for this aim. Now, let's create the previous scatter plot in two panels for males and females. We will use the `facet_wrap()` function to accomplish this. I'll remove the all added extra layers to the previous graph to highlight the use of new function and prevent the complex look of the code chunk.
 
 ```{r}
 easyCBM %>%
@@ -167,6 +186,7 @@ easyCBM %>%
   geom_point(aes(x=ORF1, y=ORF2)) +
   facet_wrap(~Gender) 
 ```
+
 We can also change the orientation of the panels.
 
 ```{r}
@@ -176,7 +196,8 @@ easyCBM %>%
   facet_wrap(~Gender, nr=2) 
 ```
 
-Let's make the visual more complex by mapping the color of the points to the proficiency levels as Fail/Pass. Since we saved an attribute (gender) by using multi-panels, we can use color mapping for the proficiency. 
+Let's make the visual more complex by mapping the color of the points to the proficiency levels as Fail/Pass. Since we saved an attribute (Gender) by using multi-panels, we can use color mapping for the proficiency.
+
 ```{r}
 easyCBM %>%
   ggplot() +
@@ -193,7 +214,8 @@ easyCBM %>%
   facet_wrap(~Gender+Ethnic) 
 ```
 
-It does not look good. Let's adjust the panel orientation.
+It does not look good (in my opinion). Let's adjust the panel orientation.
+
 ```{r}
 easyCBM %>%
   ggplot() +
@@ -201,7 +223,8 @@ easyCBM %>%
   facet_wrap(~Gender+Ethnic, nc=5) 
 ```
 
-Now, let's use `facet_grid()`. 
+Now, let's use `facet_grid()`.
+
 ```{r}
 easyCBM %>%
   ggplot() +
@@ -209,7 +232,8 @@ easyCBM %>%
   facet_grid(Gender~Ethnic) 
 ```
 
-So which one looks better? Were you able to spot the differences? And finally, let's make the plot looks better by applying the functions that we've learned so far. Please note that in the code below, we assigned a name (`gg_last`) to our graph and we can display it by typing its name.
+So which one looks better? Were you able to spot the differences? And finally, let's make the plot looks better by applying the functions that we've learned so far. Please note that in the code below, we assigned a name (`gg_last`) to our graph and we can display it just by typing `gglast`.
+
 ```{r}
 gg_last <- 
 easyCBM %>%
@@ -220,42 +244,59 @@ easyCBM %>%
   scale_x_continuous(lim=c(0, 300), breaks = as.numeric(seq(0, 300, 150))) +
   facet_grid(Gender~Ethnic) +
   theme_bw() +
-  ggtitle("Scatter Plot of ORF Scores")
+  ggtitle("Scatter Plot of ORF Scores") + 
+  theme(plot.title = element_text(hjust = 0.5))
 
 gg_last
 ```
 
-## Don't Like Coding? Try `Esquisse` Package  
-If you are more a Tableau person, you might want to try `esquisse` package, which makes it possible to create `ggplot2()` graphics interactively. It can also be used as a good hands-on activity to strengthen your knowledge of `ggplot2` grammar. Nevertheless, it can not produce very complicated graphs as the ones created by manual coding. Now, we'll upload the `esquisse` package and do some graphing interactively within R Studio. (Please make sure to install the `esquisse` package).
+## Don't Like Coding? Try `Esquisse` Package
+
+If you are more a **Tableau** person, you might want to try `esquisse` package, which makes it possible to create `ggplot2()` graphics interactively. It can also be used as a good hands-on activity to strengthen your knowledge of `ggplot2` grammar. Nevertheless, it can not produce very complicated graphs as the ones created by manual coding. Now, we'll upload the `esquisse` package and do some graphing interactively within R Studio. (Please make sure to install the `esquisse` package).
 
 ```{r, message=F, warning=F}
 library(esquisse)
 #esquisser()
 ```
 
-## Creating Interactive Graphs  
-So far, we have learned how to create beautiful graphs by using `ggplot2` package. We can take this one step further by producing interactive graphs, still using R and R studio. The idea of interactive graphs also perfectly fits to the capability of R studio in creating html-based documents. Thus, we can take the advantage of this format by making our visuals interactive and attractive.  
+## Creating Interactive Graphs
+
+So far, we have learned how to create beautiful graphs by using `ggplot2` package. We can take this one step further by producing interactive graphs, still using R and R studio. The idea of interactive graphs also perfectly fits to the capability of R studio in creating html-based documents. Thus, we can take the advantage of this format by making our visuals interactive and attractive.
 
 We will use the `plotly` package for the creation of interactive plots. Please make sure to install `plotly` and load it.
+
 ```{r, message=F, warning=F}
 library(plotly)
 ```
 
 One quick and easy way to create the interactive version of a previously created `ggplot2` graph is using the `ggplotly()` function of the `plotly` package. Let's make the latest graph we created interactive.
+
 ```{r}
 gg_last %>% 
   ggplotly()
 ```
 
-It is possible to customize the specs of the interactive graph through `plotly` package functions. Here are some examples. 
+It is possible to customize the specs of the interactive graph through `plotly` package functions. Here are some examples.
+
 ```{r}
 gg_last %>% 
-  ggplotly(width = 800, height=600) %>%
+  ggplotly(width = 750, height=600) %>%
   layout(legend = list(xanchor="left", x=1.1, y=0.95, title="top left"))
 ```
 
 We can also use `plot_ly` function of the `plotly` package to create interactive graphs from scratch. Let's draw a simple box plot of the ORF1 scores grouped for each ethnicity.
+
 ```{r, message=F, warning=F}
 easyCBM %>%
   plot_ly(x = ~ORF1, color = ~Ethnic, type = "box")
 ```
+Now, let's draw a violin plot to present the similar information as with the previous boxplot. 
+```{r}
+easyCBM %>%
+  plot_ly(y=~ORF1, 
+          x=~Ethnic, 
+          color = ~Ethnic, 
+          box = list(visible = T), 
+          type="violin")
+```
+More examples of `plot_ly()` can be found at https://plotly.com/r/.
